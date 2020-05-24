@@ -264,13 +264,13 @@ function updEmp() {
                 case "role":
                     connection.query(qryRole, function (err, res) {
                         if (err) throw err;
-                        console.table("Roles", res);
+                        console.table("Select the ID of the role that you would like to assign the employee to:", res);
                     });
                     break;
                 case "manager":
                     connection.query(qryEmp, function (err, res) {
                         if (err) throw err;
-                        console.table("Managers", res);
+                        console.table("Select the ID of the manager that you would like to assign the employee to:", res);
                     });
                     break;
             }
@@ -308,7 +308,7 @@ function updEmp() {
 function viewEmpMgr() {
     connection.query(qryEmp, function (err, res) {
         if (err) throw err;
-        console.table("Enter an ID to update:", res);
+        console.table("Enter the ID of the manager whose employees you'd like to see:", res);
     });
 
     inquirer
