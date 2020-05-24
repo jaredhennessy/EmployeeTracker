@@ -57,7 +57,7 @@ function inquire() {
                 case "Add role":
                     addRole();
                     break;
-                case "Delete roles":
+                case "Delete role":
                     delRow("role");
                     break;
                 case "View employees":
@@ -69,7 +69,7 @@ function inquire() {
                 case "Delete employee":
                     delRow("employee");
                     break;
-                case "Update employees":
+                case "Update employee":
                     updEmp();
                     break;
                 case "View employees by manager":
@@ -83,11 +83,11 @@ function inquire() {
 }
 
 let qryDept = "SELECT * FROM department;";
-const qryRole = "SELECT a.id, a.title, a.salary, b.name AS `department` FROM role a JOIN department b ON a.department_id = b.id;";
+let qryRole = "SELECT a.id, a.title, a.salary, b.name AS `department` FROM role a LEFT JOIN department b ON a.department_id = b.id;";
 let qryEmp = "SELECT a.id, a.first_name, a.last_name, b.title, d.name as `department`, IFNULL(CONCAT(c.first_name,' ',c.last_name),'none') as `manager` FROM employee ";
-qryEmp += "a JOIN role b ON a.role_id = b.id ";
+qryEmp += "a LEFT JOIN role b ON a.role_id = b.id ";
 qryEmp += "LEFT JOIN employee c ON a.manager_id = c.id ";
-qryEmp += " JOIN department d ON b.department_id = d.id";
+qryEmp += " LEFT JOIN department d ON b.department_id = d.id";
 
 function viewDepts() {
     connection.query(qryDept, function (err, res) {
@@ -104,10 +104,10 @@ function addDept() {
             type: "input",
             message: "What is the name of the new department?"
         })
-        .then(function (answer) {
+        .then((answers) => {
             var query = "INSERT INTO department SET ?";
             connection.query(query, {
-                name: answer.name
+                name: answers.name
             }, function (err, res) {
                 if (err) throw err;
 
@@ -139,12 +139,12 @@ function addRole() {
             type: "input",
             message: "What is the Department ID of the new role?"
         }])
-        .then(function (answer) {
+        .then((answers) => {
             var query = "INSERT INTO role SET ?";
             connection.query(query, {
-                title: answer.title,
-                salary: parseFloat(answer.salary),
-                department_id: parseInt(answer.department_id)
+                title: answers.title,
+                salary: parseFloat(answers.salary),
+                department_id: parseInt(answers.department_id)
             }, function (err, res) {
                 if (err) throw err;
 
@@ -180,13 +180,13 @@ function addEmp() {
             type: "input",
             message: "What is the employee ID of the new employee's manager (if any?)?"
         }])
-        .then(function (answer) {
+        .then((answers) => {
             var query = "INSERT INTO employee SET ?";
             connection.query(query, {
-                first_name: answer.first_name,
-                last_name: answer.last_name,
-                role_id: parseInt(answer.role_id),
-                manager_id: parseInt(answer.manager_id)
+                first_name: answers.first_name,
+                last_name: answers.last_name,
+                role_id: parseInt(answers.role_id),
+                manager_id: parseInt(answers.manager_id)
             }, function (err, res) {
                 if (err) throw err;
 
@@ -197,7 +197,7 @@ function addEmp() {
 
 function delRow(table) {
     let query;
-
+    console.log(table);
     switch (table) {
         case "department":
             query = qryDept;
@@ -212,33 +212,35 @@ function delRow(table) {
 
     connection.query(query, function (err, res) {
         if (err) throw err;
-        console.table("Enter an ID to delete:", res);
+        console.table(res);
+
+        inquirer
+            .prompt([{
+                name: "id",
+                type: "input",
+                message: "Enter the ID of a row to delete:",
+            }]).then((answers) => {
+                const qryDel = "DELETE FROM " + table + " WHERE ID = " + answers.id;
+                connection.query(qryDel, function (err, res) {
+                    if (err) throw err;
+                });
+
+                connection.query(query, function (err, res) {
+                    if (err) throw err;
+                    console.log("ID " + answers.id + " deleted.");
+                });
+
+                inquire();
+            });
     });
 
-    inquirer
-        .prompt([{
-            name: "id",
-            type: "input",
-            message: "Enter the ID of a row to delete:",
-        }]).then((answers) => {
-            const qryDel = "DELETE FROM " + table + " WHERE ID = " + answers.id;
-            connection.query(qryDel, function (err, res) {
-                if (err) throw err;
-            });
 
-            connection.query(query, function (err, res) {
-                if (err) throw err;
-                console.log("ID " + answers.id + " deleted.");
-            });
-
-            inquire();
-        });
 }
 
 function updEmp() {
     connection.query(qryEmp, function (err, res) {
         if (err) throw err;
-        console.table("Enter an ID to update:", res);
+        console.table("Enter the ID of the employee that you would like to update:", res);
     });
 
     inquirer
@@ -280,13 +282,13 @@ function updEmp() {
                     name: "id",
                     type: "input",
                     message: "Enter the ID of the " + column + " that you would like to assign the employee to:",
-                }]).then(function (answer) {
+                }]).then((answers) => {
                     let qryUpd;
 
-                    if (answer.id === "") {
+                    if (answers.id === "") {
                         qryUpd = "UPDATE employee SET " + column + "_id = null";
                     } else {
-                        qryUpd = "UPDATE employee SET " + column + "_id = " + parseInt(answer.id);
+                        qryUpd = "UPDATE employee SET " + column + "_id = " + parseInt(answers.id);
                     }
 
                     qryUpd += " WHERE id = " + empID;
@@ -318,7 +320,7 @@ function viewEmpMgr() {
             message: "Enter the ID of the manager whose employees you'd like to see:",
         }])
         .then((answers) => {
-            let qryMgr = qryEmp + " WHERE manager_id = " + parseInt(answers.id);
+            let qryMgr = qryEmp + " WHERE a.manager_id = " + parseInt(answers.id);
             connection.query(qryMgr, function (err, res) {
                 if (err) throw err;
                 console.table("Employees that report to the selected manager:", res);
